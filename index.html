@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Jutsu Browser</title>
+<style>
+  :root{--bg:#0f1115;--panel:#151924;--muted:#8aa0b5;--text:#e7eef7;--chip:#1e2433;--chip-br:#283047}
+  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial}
+  header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0f1115 0%,#0f1115cc 70%,transparent 100%);backdrop-filter:blur(8px)}
+  .wrap{max-width:1200px;margin:0 auto;padding:14px} h1{margin:4px 0 10px;font-size:20px}
+  .panel{background:#151924;border:1px solid #22293a;border-radius:14px;padding:10px}
+  .filters{display:grid;grid-template-columns:1fr 120px 160px 160px 160px 140px;gap:8px}
+  .filters .wide{grid-column:1/-1}
+  .inp,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #252b3e;background:#0e1220;color:var(--text);outline:none}
+  .chip{background:var(--chip);border:1px solid var(--chip-br);border-radius:999px;padding:4px 9px;font-size:12px;color:#8aa0b5;cursor:pointer;user-select:none;margin-right:6px}
+  .chip.on{background:#25324a;color:#8bd4ff;border-color:#3a4b73}
+  .row{display:flex;align-items:center;gap:10px}
+  .btn{padding:9px 12px;border-radius:10px;border:1px solid #24304a;background:#1a2336;color:var(--text);cursor:pointer}
+  .btn.primary{background:#1b2540;border-color:#2c3e70;color:#cfe4ff}.btn.ghost{background:transparent}.btn:disabled{opacity:.5;cursor:not-allowed}
+  table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
+  thead th{position:sticky;top:80px;background:#151924;border-bottom:1px solid #26304a;padding:10px;font-weight:600;text-align:left;cursor:pointer}
+  tbody td{border-bottom:1px solid #1f2638;padding:10px;vertical-align:top} tbody tr:hover{background:#121828}
+  .name{font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
+  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#22304b;border:1px solid #32456d;color:#c9ddff;font-size:12px;margin:2px 2px 0 0}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+  .stat{color:#8aa0b5;font-size:12px}.muted{color:#8aa0b5}.tag{background:#1b243a;border:1px solid #2a3a5a;padding:2px 6px;border-radius:6px;font-size:12px;margin-right:4px}
+  .right{margin-left:auto}.pagination{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:10px}
+  .pagebtn{padding:6px 10px;border-radius:8px;border:1px solid #2c3a5e;background:#172038;color:#dbe8ff;cursor:pointer}
+  .pagebtn[aria-current="page"]{background:#203057}.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Jutsu Browser</h1>
+    <div class="panel">
+      <div class="filters">
+        <input id="q" class="inp" placeholder="Search name, description, requirements… (⌘/Ctrl+K)" />
+        <select id="rank"><option value="">Rank: Any</option><option>E</option><option>D</option><option>C</option><option>B</option><option>A</option><option>S</option></select>
+        <select id="classification"><option value="">Classification: Any</option></select>
+        <select id="element"><option value="">Element: Any</option></select>
+        <select id="type"><option value="">Type: Any</option><option>Universal</option><option>Clan</option><option>Personal</option><option>Village</option></select>
+        <input id="style" class="inp" placeholder="Fighting Style contains…" />
+        <div class="wide toolbar">
+          <div class="row">
+            <label class="chip" data-chip="hasStyle">Has Fighting Style</label>
+            <label class="chip" data-chip="hasParent">Has Parent Jutsu</label>
+            <label class="chip" data-chip="hasTriggers">Has Triggers</label>
+            <label class="chip" data-chip="hasSeals">Has Hand Seals</label>
+          </div>
+          <div class="right row">
+            <button id="clear" class="btn ghost">Clear</button>
+            <button id="exportCsv" class="btn">Export filtered CSV</button>
+            <button id="reload" class="btn primary">Reload</button>
+            <span id="meta" class="stat"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="error" class="panel hidden"></div>
+  <div class="panel">
+    <div class="stat" id="loading">Loading from Google Sheets…</div>
+    <table id="grid" class="hidden">
+      <thead>
+        <tr>
+          <th data-sort="Name">Name</th>
+          <th data-sort="Rank">Rank</th>
+          <th data-sort="Classification(s)">Classification</th>
+          <th data-sort="Class(es)">Class</th>
+          <th data-sort="Element(s)">Elements</th>
+          <th data-sort="Fighting Style">Fighting Style</th>
+          <th data-sort="Type">Type</th>
+          <th data-sort="Chakra Cost">Chakra Cost</th>
+          <th data-sort="Range">Range</th>
+          <th>Details</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <div class="pagination hidden" id="pager"></div>
+  </div>
+</main>
+
+<script>
+// ---------- CONFIG ----------
+const CONFIG = {
+  SHEET_ID: "1pl53ISM_ymur95hNGIcYaaBIYr4b27SyRbJNuS9SYko", // your spreadsheet ID
+  SHEET_NAME: "Jutsu",
+};
+
+// Expected columns in your header row
+const COLS = [
+ "Name","Rank","Classification(s)","Class(es)","Element(s)","Hand Seals","Trigger(s)","Range",
+ "Fighting Style","Parent Jutsu","Chakra Cost","Requirements","Description","Type","EXP Cost (auto)","Notes/Status"
+];
+const EXP_BY_RANK = {E:15,D:30,C:50,B:100,A:175,S:250};
+const PAGE_SIZE = 25;
+
+let RAW=[], FILTERED=[], SORT={key:"Name",dir:1}, PAGE=1;
+
+// ---------- Robust GViz fetch with CSV fallback ----------
+async function fetchSheet(sheetId, sheetName){
+  // Try GViz first (works with "Anyone with the link: Viewer" or with normal share)
+  const gvizURL = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+  try{
+    const txt = await (await fetch(gvizURL, {mode:"cors"})).text();
+    const json = safeParseGViz(txt);
+    const cols = (json.table?.cols||[]).map(c=>c.label||"");
+    const rows = (json.table?.rows||[]).map(r => (r.c||[]).map(c => c ? (c.f ?? c.v) : ""));
+    const headerIdx = COLS.map(name => cols.indexOf(name));
+    const objects = rows.map(arr => Object.fromEntries(COLS.map((name,i)=>[name, headerIdx[i] >= 0 ? (arr[headerIdx[i]] ?? "") : ""])));
+    return objects.filter(o => (o["Name"]||"").toString().trim() && o["Name"]!=="Name");
+  }catch(e){
+    console.warn("GViz failed, trying CSV fallback:", e);
+
+    // CSV fallback requires File → Share → Publish to the web (or the sheet must allow export).
+    const csvURL = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(sheetName)}`;
+    const csvText = await (await fetch(csvURL,{mode:"cors"})).text();
+    return parseCsvToObjects(csvText, COLS);
+  }
+}
+
+// Strip wrapper like /*O_o*/ google.visualization.Query.setResponse(...);
+function safeParseGViz(text){
+  // Remove anti-XSSI or comments and keep only the first {...} JSON block
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if(start === -1 || end === -1 || end <= start) {
+    throw new Error("GViz response not JSON-wrapped (got: " + text.slice(0,80) + "…)");
+  }
+  const jsonStr = text.slice(start, end+1);
+  return JSON.parse(jsonStr);
+}
+
+// Simple CSV -> objects using header row; fills missing headers from COLS if needed
+function parseCsvToObjects(csv, expectedCols){
+  const lines = csv.replace(/\r/g,'').split('\n').filter(Boolean);
+  if(!lines.length) return [];
+  const header = splitCsvLine(lines[0]);
+  const idx = expectedCols.map(h => header.indexOf(h));
+  return lines.slice(1).map(line=>{
+    const cells = splitCsvLine(line);
+    const obj = {};
+    expectedCols.forEach((h,i)=>{ obj[h] = idx[i] >= 0 ? (cells[idx[i]] ?? "") : ""; });
+    return obj;
+  }).filter(o => (o["Name"]||"").toString().trim());
+}
+
+// Minimal CSV splitter (handles quoted commas and double quotes)
+function splitCsvLine(line){
+  const out=[]; let cur="", inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(inQ){
+      if(ch==='"'){
+        if(line[i+1]==='"'){ cur+='"'; i++; } else { inQ=false; }
+      }else cur+=ch;
+    }else{
+      if(ch===','){ out.push(cur); cur=""; }
+      else if(ch==='"'){ inQ=true; }
+      else cur+=ch;
+    }
+  }
+  out.push(cur);
+  return out.map(x=>x.trim());
+}
+
+function clean(s){ return (s||"").toString().trim(); }
+function splitMulti(s){ return clean(s).split(/[,;|]/).map(x=>x.trim()).filter(Boolean); }
+function hasVal(s,n){ return clean(s).toLowerCase().includes(n.toLowerCase()); }
+function computeExp(row){ const v=clean(row["EXP Cost (auto)"]); if(v) return v; const r=clean(row.Rank).toUpperCase(); return EXP_BY_RANK[r]?String(EXP_BY_RANK[r]):""; }
+
+function buildFacetOptions(rows){
+  const sets={classification:new Set(), element:new Set(), type:new Set()};
+  rows.forEach(r=>{
+    splitMulti(r["Classification(s)"]).forEach(x=>sets.classification.add(x));
+    splitMulti(r["Element(s)"]).forEach(x=>sets.element.add(x));
+    const t=clean(r["Type"]); if(t) sets.type.add(t);
+  });
+  const clsSel=document.getElementById("classification"); [...sets.classification].sort().forEach(v=>clsSel.append(new Option(v,v)));
+  const elSel=document.getElementById("element"); [...sets.element].sort().forEach(v=>elSel.append(new Option(v,v)));
+  const typeSel=document.getElementById("type"); [...sets.type].sort().forEach(v=>typeSel.append(new Option(v,v)));
+}
+
+function currentFilters(){
+  const chipsOn=new Set([...document.querySelectorAll('.chip.on')].map(x=>x.dataset.chip));
+  return{
+    q:document.getElementById('q').value.trim(),
+    rank:document.getElementById('rank').value,
+    classification:document.getElementById('classification').value,
+    element:document.getElementById('element').value,
+    type:document.getElementById('type').value,
+    style:document.getElementById('style').value.trim(),
+    hasStyle:chipsOn.has('hasStyle'), hasParent:chipsOn.has('hasParent'), hasSeals:chipsOn.has('hasSeals'), hasTriggers:chipsOn.has('hasTriggers'),
+  };
+}
+
+function applyFilters(){
+  const f=currentFilters(); let rows=RAW.slice();
+  if(f.q){
+    const n=f.q.toLowerCase();
+    rows = rows.filter(r =>
+      clean(r.Name).toLowerCase().includes(n) ||
+      clean(r.Description).toLowerCase().includes(n) ||
+      clean(r.Requirements).toLowerCase().includes(n) ||
+      clean(r["Fighting Style"]).toLowerCase().includes(n)
+    );
+  }
+  if(f.rank) rows=rows.filter(r=>clean(r.Rank).toUpperCase()===f.rank);
+  if(f.classification) rows=rows.filter(r=>splitMulti(r["Classification(s)"]).includes(f.classification));
+  if(f.element) rows=rows.filter(r=>splitMulti(r["Element(s)"]).includes(f.element));
+  if(f.type) rows=rows.filter(r=>clean(r.Type)===f.type);
+  if(f.style) rows=rows.filter(r=>hasVal(r["Fighting Style"], f.style));
+  if(f.hasStyle) rows=rows.filter(r=>clean(r["Fighting Style"]).length>0);
+  if(f.hasParent) rows=rows.filter(r=>clean(r["Parent Jutsu"]).length>0);
+  if(f.hasSeals) rows=rows.filter(r=>clean(r["Hand Seals"]).length>0);
+  if(f.hasTriggers) rows=rows.filter(r=>clean(r["Trigger(s)"]).length>0);
+  FILTERED=rows; PAGE=1; render();
+}
+
+function sortBy(key){ if(SORT.key===key){SORT.dir*=-1}else{SORT.key=key;SORT.dir=1} render(); }
+
+function pagedRows(){
+  const sorted=FILTERED.slice().sort((a,b)=>{
+    const av=clean(a[SORT.key]).toLowerCase(), bv=clean(b[SORT.key]).toLowerCase();
+    if(av<bv) return -1*SORT.dir; if(av>bv) return 1*SORT.dir; return 0;
+  });
+  const start=(PAGE-1)*PAGE_SIZE;
+  return { total:sorted.length, rows:sorted.slice(start,start+PAGE_SIZE) };
+}
+
+function render(){
+  const grid=document.getElementById('grid'); const tbody=grid.querySelector('tbody');
+  const {total,rows}=pagedRows();
+  tbody.innerHTML=rows.map(r=>{
+    const classifications=splitMulti(r["Classification(s)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ");
+    const elements=splitMulti(r["Element(s)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ");
+    const style=esc(r["Fighting Style"]), type=esc(r.Type), chakra=esc(r["Chakra Cost"])||"", range=esc(r["Range"])||"";
+    const handSeals=esc(r["Hand Seals"])||"", triggers=esc(r["Trigger(s)"])||"", parent=esc(r["Parent Jutsu"])||"";
+    const exp=esc(computeExp(r)), req=esc(r["Requirements"])||"", desc=esc(r["Description"])||"";
+    return `<tr>
+      <td class="name">${esc(r.Name)}<div class="muted mono">EXP ${exp}${type?` · ${type}`:``}</div></td>
+      <td>${esc(r.Rank)}</td>
+      <td>${classifications}</td>
+      <td>${splitMulti(r["Class(es)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ")}</td>
+      <td>${elements}</td>
+      <td>${style?`<span class="tag">${style}</span>`:""}</td>
+      <td>${type}</td>
+      <td>${chakra}</td>
+      <td>${range}</td>
+      <td><details><summary>More</summary>
+        ${parent?`<div><b>Parent:</b> ${parent}</div>`:""}
+        ${handSeals?`<div><b>Hand Seals:</b> ${handSeals}</div>`:""}
+        ${triggers?`<div><b>Triggers:</b> ${triggers}</div>`:""}
+        ${req?`<div style="margin-top:6px"><b>Requirements</b><br>${req}</div>`:""}
+        ${desc?`<div style="margin-top:6px"><b>Description</b><br>${desc}</div>`:""}
+        ${r["Notes/Status"]?`<div style="margin-top:6px"><b>Notes</b><br>${esc(r["Notes/Status"])}</div>`:""}
+      </details></td></tr>`;
+  }).join("");
+
+  // pager
+  const pager=document.getElementById('pager'); const pages=Math.max(1, Math.ceil(total/PAGE_SIZE));
+  pager.innerHTML=''; if(pages>1){ pager.classList.remove('hidden');
+    const mk=(label,to,disabled=false,current=false)=>{ const b=document.createElement('button'); b.className='pagebtn'; b.textContent=label;
+      if(current) b.setAttribute('aria-current','page'); if(disabled) b.disabled=true; else b.onclick=()=>{PAGE=to; render(); window.scrollTo({top:0,behavior:'smooth'})}; return b; };
+    pager.append(mk('⟨⟨',1,PAGE===1)); pager.append(mk('⟨',Math.max(1,PAGE-1),PAGE===1));
+    for(let p=Math.max(1,PAGE-2); p<=Math.min(pages,PAGE+2); p++) pager.append(mk(String(p),p,false,p===PAGE));
+    pager.append(mk('⟩',Math.min(pages,PAGE+1),PAGE===pages)); pager.append(mk('⟩⟩',pages,PAGE===pages));
+  } else pager.classList.add('hidden');
+
+  document.getElementById('meta').textContent = `${total} result${total===1?'':'s'}`;
+}
+
+function esc(s){ return String(s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+
+// Export CSV (filtered)
+function toCsv(rows){
+  const columns=["Name","Rank","Classification(s)","Class(es)","Element(s)","Fighting Style","Type","Chakra Cost","Range","Hand Seals","Trigger(s)","Parent Jutsu","Requirements","Description","EXP Cost (auto)","Notes/Status"];
+  const escCSV=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
+  const lines=[columns.join(',')];
+  rows.forEach(r=>{ const rec=Object.assign({},r); rec["EXP Cost (auto)"]=computeExp(r); lines.push(columns.map(k=>escCSV(rec[k])).join(',')); });
+  return lines.join('\n');
+}
+function download(name,text){ const blob=new Blob([text],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
+
+// UI
+function wire(){
+  document.querySelectorAll('.chip').forEach(ch=> ch.addEventListener('click', ()=>{ ch.classList.toggle('on'); applyFilters(); }));
+  document.getElementById('q').addEventListener('input', debounce(applyFilters,120));
+  document.getElementById('style').addEventListener('input', debounce(applyFilters,120));
+  ['rank','classification','element','type'].forEach(id=>document.getElementById(id).addEventListener('change', applyFilters));
+  document.getElementById('clear').addEventListener('click', ()=>{ document.querySelectorAll('input.inp').forEach(i=>i.value=''); ['rank','classification','element','type'].forEach(id=>document.getElementById(id).value=''); document.querySelectorAll('.chip.on').forEach(x=>x.classList.remove('on')); applyFilters(); });
+  document.getElementById('exportCsv').addEventListener('click', ()=> download('jutsu_filtered.csv', toCsv(FILTERED)));
+  document.getElementById('reload').addEventListener('click', init);
+  document.querySelectorAll('thead th[data-sort]').forEach(th=> th.addEventListener('click', ()=> sortBy(th.dataset.sort)));
+  window.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); const q=document.getElementById('q'); q.focus(); q.select(); }});
+}
+function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); } }
+
+async function init(){
+  const loading=document.getElementById('loading'), grid=document.getElementById('grid'), error=document.getElementById('error');
+  error.classList.add('hidden'); grid.classList.add('hidden'); loading.classList.remove('hidden'); loading.textContent='Loading from Google Sheets…';
+  try{
+    RAW = await fetchSheet(CONFIG.SHEET_ID, CONFIG.SHEET_NAME);
+    if(!RAW.length) throw new Error("No rows parsed. Check tab name & header columns.");
+    document.getElementById('classification').length = 1; // reset if reloading
+    document.getElementById('element').length = 1;
+    document.getElementById('type').length = 1;
+    buildFacetOptions(RAW); FILTERED = RAW.slice(); render();
+    grid.classList.remove('hidden'); loading.classList.add('hidden');
+  }catch(err){
+    console.error(err);
+    error.classList.remove('hidden');
+    error.innerHTML = `<b>Failed to load sheet</b><br>${esc(err.message)}<br><br>
+      Quick checks:<ul>
+        <li><b>SHEET_ID</b> must be the long ID from the edit URL (not the publish key).</li>
+        <li>Share → <i>Anyone with the link: Viewer</i> <u>or</u> File → <i>Publish to the web</i>.</li>
+        <li>Tab name must be <code>${esc(CONFIG.SHEET_NAME)}</code>.</li>
+        <li>Header row must match exactly:<br><code>${esc(COLS.join(' | '))}</code></li>
+      </ul>`;
+    loading.classList.add('hidden');
+  }
+}
+
+wire(); init();
+</script>
+</body>
+</html>
