@@ -8,7 +8,11 @@
   :root{--bg:#0f1115;--panel:#151924;--muted:#8aa0b5;--text:#e7eef7;--chip:#1e2433;--chip-br:#283047}
   *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial}
   header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0f1115 0%,#0f1115cc 70%,transparent 100%);backdrop-filter:blur(8px)}
-  .wrap{max-width:1200px;margin:0 auto;padding:14px} h1{margin:4px 0 10px;font-size:20px}
+  .wrap{
+  max-width: min(1800px, 95vw);  /* was 1200px */
+  margin: 0 auto;
+  padding: 14px;
+}
   .panel{background:#151924;border:1px solid #22293a;border-radius:14px;padding:10px}
   .filters{display:grid;grid-template-columns:1fr 120px 160px 160px 160px 140px;gap:8px}
   .filters .wide{grid-column:1/-1}
