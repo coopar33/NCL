@@ -13,6 +13,7 @@
   margin: 0 auto;
   padding: 14px;
 }
+  body.wide .wrap{max-width:min(2000px, 98vw)}
   .panel{background:#151924;border:1px solid #22293a;border-radius:14px;padding:10px}
   .filters{display:grid;grid-template-columns:1fr 120px 160px 160px 160px 140px;gap:8px}
   .filters .wide{grid-column:1/-1}
@@ -57,6 +58,7 @@
             <button id="clear" class="btn ghost">Clear</button>
             <button id="exportCsv" class="btn">Export filtered CSV</button>
             <button id="reload" class="btn primary">Reload</button>
+            <button id="wide" class="btn">Wide mode</button>
             <span id="meta" class="stat"></span>
           </div>
         </div>
@@ -331,7 +333,13 @@ async function init(){
   }
 }
 
-wire(); init();
+wire(); 
+  if(localStorage.getItem('wide') === '1') document.body.classList.add('wide');
+document.getElementById('wide').addEventListener('click', () => {
+  document.body.classList.toggle('wide');
+  localStorage.setItem('wide', document.body.classList.contains('wide') ? '1' : '0');
+});
+  init();
 </script>
 </body>
 </html>
