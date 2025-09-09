@@ -1,345 +1,451 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Jutsu Browser</title>
-<style>
-  :root{--bg:#0f1115;--panel:#151924;--muted:#8aa0b5;--text:#e7eef7;--chip:#1e2433;--chip-br:#283047}
-  *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,Helvetica,Arial}
-  header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,#0f1115 0%,#0f1115cc 70%,transparent 100%);backdrop-filter:blur(8px)}
-  .wrap{
-  max-width: min(1800px, 95vw);  /* was 1200px */
-  margin: 0 auto;
-  padding: 14px;
-}
-  body.wide .wrap{max-width:min(2000px, 98vw)}
-  .panel{background:#151924;border:1px solid #22293a;border-radius:14px;padding:10px}
-  .filters{display:grid;grid-template-columns:1fr 120px 160px 160px 160px 140px;gap:8px}
-  .filters .wide{grid-column:1/-1}
-  .inp,select{width:100%;padding:10px 12px;border-radius:10px;border:1px solid #252b3e;background:#0e1220;color:var(--text);outline:none}
-  .chip{background:var(--chip);border:1px solid var(--chip-br);border-radius:999px;padding:4px 9px;font-size:12px;color:#8aa0b5;cursor:pointer;user-select:none;margin-right:6px}
-  .chip.on{background:#25324a;color:#8bd4ff;border-color:#3a4b73}
-  .row{display:flex;align-items:center;gap:10px}
-  .btn{padding:9px 12px;border-radius:10px;border:1px solid #24304a;background:#1a2336;color:var(--text);cursor:pointer}
-  .btn.primary{background:#1b2540;border-color:#2c3e70;color:#cfe4ff}.btn.ghost{background:transparent}.btn:disabled{opacity:.5;cursor:not-allowed}
-  table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px}
-  thead th{position:sticky;top:80px;background:#151924;border-bottom:1px solid #26304a;padding:10px;font-weight:600;text-align:left;cursor:pointer}
-  tbody td{border-bottom:1px solid #1f2638;padding:10px;vertical-align:top} tbody tr:hover{background:#121828}
-  .name{font-weight:700}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace}
-  .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#22304b;border:1px solid #32456d;color:#c9ddff;font-size:12px;margin:2px 2px 0 0}
-  .toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
-  .stat{color:#8aa0b5;font-size:12px}.muted{color:#8aa0b5}.tag{background:#1b243a;border:1px solid #2a3a5a;padding:2px 6px;border-radius:6px;font-size:12px;margin-right:4px}
-  .right{margin-left:auto}.pagination{display:flex;gap:6px;align-items:center;justify-content:flex-end;margin-top:10px}
-  .pagebtn{padding:6px 10px;border-radius:8px;border:1px solid #2c3a5e;background:#172038;color:#dbe8ff;cursor:pointer}
-  .pagebtn[aria-current="page"]{background:#203057}.hidden{display:none}
-</style>
+  <meta charset="UTF-8" />
+  <title>Pokémon Racing Simulator (Manual Stats + Special Moves)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <style>
+    .container { background:#1f1f2f; color:#f8f8f8; font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif; padding:1.5rem; border-radius:12px; box-shadow:0 0 15px #0006; max-width:980px; margin:2rem auto; }
+    h1 { color:#ffcb05; margin:0 0 1rem; text-shadow:0 0 10px #3b4cca; text-align:center; }
+    h2 { margin:1.25rem 0 .5rem; color:#ffd84d; }
+    .row { display:flex; flex-wrap:wrap; gap:1rem; }
+    label { display:flex; flex-direction:column; gap:.35rem; flex:1 1 120px; font-weight:600; }
+    select, input[type="number"], input[type="text"] { padding:.6rem .7rem; border-radius:8px; border:1px solid #333; background:#121222; color:#eaeaf5; }
+    .actions { margin-top:1rem; display:flex; align-items:center; gap:1rem; }
+    button { background:#3b4cca; color:#fff; border:none; padding:.7rem 1rem; border-radius:10px; cursor:pointer; font-weight:700; }
+    button:hover { filter:brightness(1.1); }
+    .error { color:#ff6b6b; font-weight:700; }
+    table { width:100%; border-collapse:separate; border-spacing:0; overflow:hidden; border-radius:10px; }
+    thead th { background:#2a2a3f; color:#e6e6ff; text-align:left; padding:.6rem .7rem; position:sticky; top:0; }
+    tbody td { background:#17172a; border-top:1px solid #2a2a3f; padding:.6rem .7rem; }
+    .results { margin-top:1.25rem; }
+    details summary { cursor:pointer; margin:.75rem 0; }
+    .breakdown { background:#121222; border:1px solid #2a2a3f; border-radius:10px; padding:1rem; margin:.75rem 0; }
+    .chip { display:inline-block; background:#2a2a3f; color:#cfd3ff; padding:.2rem .5rem; border-radius:999px; font-size:.85rem; margin:.15rem .25rem 0 0; }
+    .remove-btn { background:#8a1c1c; }
+    .remove-btn:hover { filter:brightness(1.1); }
+    .move-desc { font-size:.9em; color:#aaa; font-weight:400; margin-top:0.1rem; }
+  </style>
 </head>
 <body>
-<header>
-  <div class="wrap">
-    <h1>Jutsu Browser</h1>
-    <div class="panel">
-      <div class="filters">
-        <input id="q" class="inp" placeholder="Search name, description, requirements… (⌘/Ctrl+K)" />
-        <select id="rank"><option value="">Rank: Any</option><option>E</option><option>D</option><option>C</option><option>B</option><option>A</option><option>S</option></select>
-        <select id="classification"><option value="">Classification: Any</option></select>
-        <select id="element"><option value="">Element: Any</option></select>
-        <select id="type"><option value="">Type: Any</option><option>Universal</option><option>Clan</option><option>Personal</option><option>Village</option></select>
-        <input id="style" class="inp" placeholder="Fighting Style contains…" />
-        <div class="wide toolbar">
-          <div class="row">
-            <label class="chip" data-chip="hasStyle">Has Fighting Style</label>
-            <label class="chip" data-chip="hasParent">Has Parent Jutsu</label>
-            <label class="chip" data-chip="hasTriggers">Has Triggers</label>
-            <label class="chip" data-chip="hasSeals">Has Hand Seals</label>
-          </div>
-          <div class="right row">
-            <button id="clear" class="btn ghost">Clear</button>
-            <button id="exportCsv" class="btn">Export filtered CSV</button>
-            <button id="reload" class="btn primary">Reload</button>
-            <button id="wide" class="btn">Wide mode</button>
-            <span id="meta" class="stat"></span>
-          </div>
-        </div>
+<div class="race-sim container">
+  <h1>Pokémon Racing Simulator</h1>
+
+  <div class="race-controls">
+    <div class="row">
+      <label>
+        Race Class
+        <select id="raceClass">
+          <option>Sprinter</option>
+          <option>Stamina</option>
+          <option>Mixed</option>
+        </select>
+      </label>
+      <label>
+        Terrain
+        <select id="terrain">
+          <option>Grass</option>
+          <option>Mud</option>
+          <option>Sand</option>
+          <option>Snow</option>
+          <option>Stone</option>
+          <option>Urban</option>
+        </select>
+      </label>
+      <label>
+        Weather
+        <select id="weather">
+          <option>Clear</option>
+          <option>Rain</option>
+          <option>Hail</option>
+          <option>Sun</option>
+          <option>Fog</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="racer-add">
+      <h2>Add Racer (Manual Stats)</h2>
+      <div class="row">
+        <label>
+          Name
+          <input type="text" id="pokeName" placeholder="Pokémon or Racer Name" maxlength="24">
+        </label>
+        <label>
+          HP
+          <input type="number" id="hp" min="1" max="255" placeholder="e.g. 80">
+        </label>
+        <label>
+          Atk
+          <input type="number" id="atk" min="1" max="200" placeholder="e.g. 100">
+        </label>
+        <label>
+          Def
+          <input type="number" id="def" min="1" max="200" placeholder="e.g. 80">
+        </label>
+        <label>
+          Sp. Atk
+          <input type="number" id="spAtk" min="1" max="200" placeholder="e.g. 80">
+        </label>
+        <label>
+          Sp. Def
+          <input type="number" id="spDef" min="1" max="200" placeholder="e.g. 80">
+        </label>
+        <label>
+          Speed
+          <input type="number" id="speed" min="1" max="200" placeholder="e.g. 100">
+        </label>
+        <label>
+          Rider Skill (0–12)
+          <input type="number" id="riderSkill" min="0" max="12" value="6">
+        </label>
+        <label>
+          Special Move / Ability
+          <select id="specialMove">
+            <option value="">N/A</option>
+            <option value="Flame Charge">Flame Charge: +3 Speed for final sprint if used mid-race</option>
+            <option value="Stamina">Stamina (Ability): Grants a free Stamina point on failed saves</option>
+            <option value="Agility">Agility: Increases Focus for the obstacle phase by +4</option>
+            <option value="Swift Swim / Chlorophyll">Swift Swim / Chlorophyll: Doubles Speed under matching weather</option>
+          </select>
+          <span class="move-desc" id="moveDesc"></span>
+        </label>
       </div>
+      <button id="addRacerBtn" type="button">Add Racer</button>
+    </div>
+
+    <div class="racer-list">
+      <h2>Racers</h2>
+      <table id="racerTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>HP</th>
+            <th>Atk</th>
+            <th>Def</th>
+            <th>SpA</th>
+            <th>SpD</th>
+            <th>Spe</th>
+            <th>Rider Skill</th>
+            <th>Move/Ability</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="actions">
+      <button id="runRaceBtn" type="button">Run Race</button>
+      <span id="errorMsg" class="error" aria-live="polite"></span>
     </div>
   </div>
-</header>
 
-<main class="wrap">
-  <div id="error" class="panel hidden"></div>
-  <div class="panel">
-    <div class="stat" id="loading">Loading from Google Sheets…</div>
-    <table id="grid" class="hidden">
+  <div id="results" class="results" style="display:none;">
+    <h2>Race Results</h2>
+    <table id="resultsTable">
       <thead>
         <tr>
-          <th data-sort="Name">Name</th>
-          <th data-sort="Rank">Rank</th>
-          <th data-sort="Classification(s)">Classification</th>
-          <th data-sort="Class(es)">Class</th>
-          <th data-sort="Element(s)">Elements</th>
-          <th data-sort="Fighting Style">Fighting Style</th>
-          <th data-sort="Type">Type</th>
-          <th data-sort="Chakra Cost">Chakra Cost</th>
-          <th data-sort="Range">Range</th>
-          <th>Details</th>
+          <th>Place</th>
+          <th>Name</th>
+          <th>Total Score</th>
+          <th>Start (Focus)</th>
+          <th>Mid (3 rolls)</th>
+          <th>Event</th>
+          <th>Final Sprint</th>
         </tr>
       </thead>
       <tbody></tbody>
     </table>
-    <div class="pagination hidden" id="pager"></div>
+
+    <details id="breakdowns">
+      <summary>Show Detailed Breakdowns</summary>
+      <div id="breakdownBlocks"></div>
+    </details>
   </div>
-</main>
+</div>
 
 <script>
-// ---------- CONFIG ----------
-const CONFIG = {
-  SHEET_ID: "1pl53ISM_ymur95hNGIcYaaBIYr4b27SyRbJNuS9SYko", // your spreadsheet ID
-  SHEET_NAME: "Jutsu",
-};
+  var terrains = [ "Grass", "Mud", "Sand", "Snow", "Stone", "Urban" ];
+  var weathers = [ "Clear", "Rain", "Hail", "Sun", "Fog" ];
 
-// Expected columns in your header row
-const COLS = [
- "Name","Rank","Classification(s)","Class(es)","Element(s)","Hand Seals","Trigger(s)","Range",
- "Fighting Style","Parent Jutsu","Chakra Cost","Requirements","Description","Type","EXP Cost (auto)","Notes/Status"
-];
-const EXP_BY_RANK = {E:15,D:30,C:50,B:100,A:175,S:250};
-const PAGE_SIZE = 25;
+  var raceClasses = {
+    Sprinter: { weight:{ Speed:1.5, Stamina:0.7, Focus:0.8 } },
+    Stamina:  { weight:{ Speed:0.8, Stamina:1.5, Focus:0.9 } },
+    Mixed:    { weight:{ Speed:1.0, Stamina:1.0, Focus:1.0 } }
+  };
 
-let RAW=[], FILTERED=[], SORT={key:"Name",dir:1}, PAGE=1;
+  // If you want, you can add synergy rules here as in the previous version
 
-// ---------- Robust GViz fetch with CSV fallback ----------
-async function fetchSheet(sheetId, sheetName){
-  // Try GViz first (works with "Anyone with the link: Viewer" or with normal share)
-  const gvizURL = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-  try{
-    const txt = await (await fetch(gvizURL, {mode:"cors"})).text();
-    const json = safeParseGViz(txt);
-    const cols = (json.table?.cols||[]).map(c=>c.label||"");
-    const rows = (json.table?.rows||[]).map(r => (r.c||[]).map(c => c ? (c.f ?? c.v) : ""));
-    const headerIdx = COLS.map(name => cols.indexOf(name));
-    const objects = rows.map(arr => Object.fromEntries(COLS.map((name,i)=>[name, headerIdx[i] >= 0 ? (arr[headerIdx[i]] ?? "") : ""])));
-    return objects.filter(o => (o["Name"]||"").toString().trim() && o["Name"]!=="Name");
-  }catch(e){
-    console.warn("GViz failed, trying CSV fallback:", e);
+  var racers = [];
 
-    // CSV fallback requires File → Share → Publish to the web (or the sheet must allow export).
-    const csvURL = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&sheet=${encodeURIComponent(sheetName)}`;
-    const csvText = await (await fetch(csvURL,{mode:"cors"})).text();
-    return parseCsvToObjects(csvText, COLS);
+  // Moves/abilities info for tooltips and logic
+  var moveInfo = {
+    "": { desc: "No special move or ability." },
+    "Flame Charge": { desc: "+3 Speed for final sprint if used mid-race", effect: "flameCharge" },
+    "Stamina": { desc: "Grants a free Stamina point on failed saves", effect: "staminaAbility" },
+    "Agility": { desc: "Increases Focus for the obstacle phase by +4", effect: "agility" },
+    "Swift Swim / Chlorophyll": { desc: "Doubles Speed under matching weather", effect: "weatherBoost" }
+  };
+
+  function calcRacingStats(base) {
+    return {
+      Speed: base.speed,
+      Stamina: base.hp + (base.def / 2),
+      Focus: base.spDef + (base.atk / 2)
+    };
   }
-}
 
-// Strip wrapper like /*O_o*/ google.visualization.Query.setResponse(...);
-function safeParseGViz(text){
-  // Remove anti-XSSI or comments and keep only the first {...} JSON block
-  const start = text.indexOf('{');
-  const end = text.lastIndexOf('}');
-  if(start === -1 || end === -1 || end <= start) {
-    throw new Error("GViz response not JSON-wrapped (got: " + text.slice(0,80) + "…)");
-  }
-  const jsonStr = text.slice(start, end+1);
-  return JSON.parse(jsonStr);
-}
+  function d20(){ return Math.floor(Math.random()*20+1); }
 
-// Simple CSV -> objects using header row; fills missing headers from COLS if needed
-function parseCsvToObjects(csv, expectedCols){
-  const lines = csv.replace(/\r/g,'').split('\n').filter(Boolean);
-  if(!lines.length) return [];
-  const header = splitCsvLine(lines[0]);
-  const idx = expectedCols.map(h => header.indexOf(h));
-  return lines.slice(1).map(line=>{
-    const cells = splitCsvLine(line);
-    const obj = {};
-    expectedCols.forEach((h,i)=>{ obj[h] = idx[i] >= 0 ? (cells[idx[i]] ?? "") : ""; });
-    return obj;
-  }).filter(o => (o["Name"]||"").toString().trim());
-}
+  function byId(id){ return document.getElementById(id); }
 
-// Minimal CSV splitter (handles quoted commas and double quotes)
-function splitCsvLine(line){
-  const out=[]; let cur="", inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(inQ){
-      if(ch==='"'){
-        if(line[i+1]==='"'){ cur+='"'; i++; } else { inQ=false; }
-      }else cur+=ch;
-    }else{
-      if(ch===','){ out.push(cur); cur=""; }
-      else if(ch==='"'){ inQ=true; }
-      else cur+=ch;
+  function renderRacers() {
+    var tbody = byId("racerTable").querySelector("tbody");
+    tbody.innerHTML = "";
+    for (var i=0;i<racers.length;i++){
+      var r = racers[i];
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + (i+1) + '</td>' +
+        '<td>' + r.name + '</td>' +
+        '<td>' + r.base.hp + '</td>' +
+        '<td>' + r.base.atk + '</td>' +
+        '<td>' + r.base.def + '</td>' +
+        '<td>' + r.base.spAtk + '</td>' +
+        '<td>' + r.base.spDef + '</td>' +
+        '<td>' + r.base.speed + '</td>' +
+        '<td>' + r.riderSkill + '</td>' +
+        '<td>' + (r.move ? r.move : '—') + '</td>' +
+        '<td><button type="button" class="remove-btn" data-index="'+i+'">Remove</button></td>';
+      tbody.appendChild(tr);
+    }
+    var buttons = tbody.querySelectorAll(".remove-btn");
+    for (var j=0;j<buttons.length;j++){
+      buttons[j].addEventListener("click", function(ev){
+        var idx = parseInt(ev.currentTarget.getAttribute("data-index"),10);
+        racers.splice(idx,1);
+        renderRacers();
+      });
     }
   }
-  out.push(cur);
-  return out.map(x=>x.trim());
-}
 
-function clean(s){ return (s||"").toString().trim(); }
-function splitMulti(s){ return clean(s).split(/[,;|]/).map(x=>x.trim()).filter(Boolean); }
-function hasVal(s,n){ return clean(s).toLowerCase().includes(n.toLowerCase()); }
-function computeExp(row){ const v=clean(row["EXP Cost (auto)"]); if(v) return v; const r=clean(row.Rank).toUpperCase(); return EXP_BY_RANK[r]?String(EXP_BY_RANK[r]):""; }
+  function runRace() {
+    var err = byId("errorMsg");
+    err.textContent = "";
+    if (racers.length < 2){
+      err.textContent = "Need at least two racers!";
+      return;
+    }
 
-function buildFacetOptions(rows){
-  const sets={classification:new Set(), element:new Set(), type:new Set()};
-  rows.forEach(r=>{
-    splitMulti(r["Classification(s)"]).forEach(x=>sets.classification.add(x));
-    splitMulti(r["Element(s)"]).forEach(x=>sets.element.add(x));
-    const t=clean(r["Type"]); if(t) sets.type.add(t);
-  });
-  const clsSel=document.getElementById("classification"); [...sets.classification].sort().forEach(v=>clsSel.append(new Option(v,v)));
-  const elSel=document.getElementById("element"); [...sets.element].sort().forEach(v=>elSel.append(new Option(v,v)));
-  const typeSel=document.getElementById("type"); [...sets.type].sort().forEach(v=>typeSel.append(new Option(v,v)));
-}
+    var className = byId("raceClass").value;
+    var terrain   = byId("terrain").value;
+    var weather   = byId("weather").value;
+    var classMod  = raceClasses[className];
 
-function currentFilters(){
-  const chipsOn=new Set([...document.querySelectorAll('.chip.on')].map(x=>x.dataset.chip));
-  return{
-    q:document.getElementById('q').value.trim(),
-    rank:document.getElementById('rank').value,
-    classification:document.getElementById('classification').value,
-    element:document.getElementById('element').value,
-    type:document.getElementById('type').value,
-    style:document.getElementById('style').value.trim(),
-    hasStyle:chipsOn.has('hasStyle'), hasParent:chipsOn.has('hasParent'), hasSeals:chipsOn.has('hasSeals'), hasTriggers:chipsOn.has('hasTriggers'),
-  };
-}
+    var results = [];
+    for (var i=0;i<racers.length;i++){
+      var r = racers[i];
+      var stats = calcRacingStats(r.base);
+      var weighted = { Speed:0, Stamina:0, Focus:0 };
+      weighted.Speed   = stats.Speed   * classMod.weight.Speed;
+      weighted.Stamina = stats.Stamina * classMod.weight.Stamina;
+      weighted.Focus   = stats.Focus   * classMod.weight.Focus;
 
-function applyFilters(){
-  const f=currentFilters(); let rows=RAW.slice();
-  if(f.q){
-    const n=f.q.toLowerCase();
-    rows = rows.filter(r =>
-      clean(r.Name).toLowerCase().includes(n) ||
-      clean(r.Description).toLowerCase().includes(n) ||
-      clean(r.Requirements).toLowerCase().includes(n) ||
-      clean(r["Fighting Style"]).toLowerCase().includes(n)
-    );
+      // Rider bonus
+      var riderBonus = 0;
+      if (r.riderSkill >= 10) riderBonus = 2;
+      else if (r.riderSkill >= 7) riderBonus = 1;
+      else if (r.riderSkill <= 2) riderBonus = -2;
+
+      // Special Move/Ability logic flags
+      var moveKey = r.move || "";
+      var moveEff = (moveInfo[moveKey] && moveInfo[moveKey].effect) ? moveInfo[moveKey].effect : null;
+      var moveSynergyNote = [];
+
+      // Weather/terrain boost for Swift Swim / Chlorophyll
+      if (
+        moveEff === "weatherBoost" &&
+        ((weather === "Rain" && r.move === "Swift Swim / Chlorophyll") ||
+         (weather === "Sun" && r.move === "Swift Swim / Chlorophyll"))
+      ) {
+        weighted.Speed *= 2;
+        moveSynergyNote.push("Speed doubled for weather");
+      }
+
+      // Start Phase: Focus roll
+      var focusRoll = d20() + Math.floor(weighted.Focus / 20) + riderBonus;
+      var speedPenalty = 0;
+      if (focusRoll < 15) speedPenalty = -5;
+      if (focusRoll < 10) speedPenalty = -10;
+
+      // Mid-race Phase: Speed roll, Stamina loss
+      var staminaLeft = weighted.Stamina;
+      var speedRolls = [];
+      var staminaAbilityUsed = false;
+      for (var t = 0; t < 3; t++) {
+        var speed = d20() + Math.floor(weighted.Speed / 10) + speedPenalty;
+        speedRolls.push(speed);
+
+        staminaLeft -= 1;
+        // Stamina Ability: Grants a free Stamina point on failed save (if stamina drops below 30%)
+        if (moveEff === "staminaAbility" && staminaLeft < weighted.Stamina * 0.3 && !staminaAbilityUsed) {
+          staminaLeft += 1;
+          staminaAbilityUsed = true;
+          moveSynergyNote.push("+1 Stamina for Stamina Ability");
+        }
+        if (staminaLeft < weighted.Stamina * 0.3) speedPenalty -= 2;
+      }
+      var midSpeed = (speedRolls[0] + speedRolls[1] + speedRolls[2]) / 3;
+
+      // Event Phase: Obstacle/Weather
+      var eventPenalty = 0;
+      var eventRoll = d20() + Math.floor(weighted.Focus / 20) + riderBonus;
+      // Agility: +4 Focus for obstacle phase
+      if (moveEff === "agility") {
+        eventRoll += 4;
+        moveSynergyNote.push("+4 Focus for obstacle phase");
+      }
+      if (eventRoll < 12) eventPenalty = -3;
+
+      // Final Sprint: Speed roll, stamina mod
+      var finalSprint = d20() + Math.floor(weighted.Speed / 10) + Math.floor(staminaLeft / 10);
+      if (moveEff === "flameCharge") {
+        finalSprint += 3;
+        moveSynergyNote.push("+3 Speed for Flame Charge");
+      }
+      finalSprint += speedPenalty + eventPenalty;
+
+      var totalScore = midSpeed + finalSprint;
+
+      results.push({
+        name: r.name,
+        totalScore: totalScore,
+        breakdown: {
+          focusRoll: focusRoll,
+          speedRolls: speedRolls,
+          eventRoll: eventRoll,
+          finalSprint: finalSprint,
+          synergy: moveSynergyNote,
+          weights: { Speed: weighted.Speed, Stamina: weighted.Stamina, Focus: weighted.Focus },
+          riderBonus: riderBonus,
+          terrain: terrain,
+          weather: weather,
+          className: className,
+          move: r.move
+        }
+      });
+    }
+
+    results.sort(function(a,b){ return b.totalScore - a.totalScore; });
+
+    var resTblBody = byId("resultsTable").querySelector("tbody");
+    resTblBody.innerHTML = "";
+    for (var rI=0;rI<results.length;rI++){
+      var rr = results[rI];
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td>' + (rI+1) + '</td>' +
+        '<td>' + rr.name + '</td>' +
+        '<td>' + rr.totalScore.toFixed(1) + '</td>' +
+        '<td>' + rr.breakdown.focusRoll + '</td>' +
+        '<td>[' + rr.breakdown.speedRolls.map(function(x){return Math.round(x);}).join(', ') + ']</td>' +
+        '<td>' + rr.breakdown.eventRoll + '</td>' +
+        '<td>' + Math.round(rr.breakdown.finalSprint) + '</td>';
+      resTblBody.appendChild(tr);
+    }
+
+    var blocks = byId("breakdownBlocks");
+    blocks.innerHTML = "";
+    for (var k=0;k<results.length;k++){
+      var bk = results[k];
+      var div = document.createElement("div");
+      div.className = "breakdown";
+      var chips = '';
+      if (bk.breakdown.synergy && bk.breakdown.synergy.length){
+        for (var s=0;s<bk.breakdown.synergy.length;s++){
+          chips += '<span class="chip">' + bk.breakdown.synergy[s] + '</span>';
+        }
+      } else {
+        chips += '<span class="chip">No special move bonus</span>';
+      }
+      chips += '<span class="chip">Class: ' + bk.breakdown.className + '</span>';
+      chips += '<span class="chip">Terrain: ' + bk.breakdown.terrain + '</span>';
+      chips += '<span class="chip">Weather: ' + bk.breakdown.weather + '</span>';
+      chips += '<span class="chip">Rider Bonus: ' + bk.breakdown.riderBonus + '</span>';
+      if (bk.breakdown.move)
+        chips += '<span class="chip">Move: ' + bk.breakdown.move + '</span>';
+
+      div.innerHTML =
+        '<h3 style="margin:0 0 .25rem;">' + bk.name + '</h3>' +
+        chips +
+        '<div style="margin-top:.5rem;">' +
+        '<strong>Weighted Stats</strong>: ' +
+        'Speed ' + Math.round(bk.breakdown.weights.Speed) + ', ' +
+        'Stamina ' + Math.round(bk.breakdown.weights.Stamina) + ', ' +
+        'Focus ' + Math.round(bk.breakdown.weights.Focus) +
+        '</div>' +
+        '<div><strong>Start (Focus)</strong>: ' + bk.breakdown.focusRoll + '</div>' +
+        '<div><strong>Mid (3 rolls)</strong>: [' + bk.breakdown.speedRolls.map(function(x){return Math.round(x);}).join(', ') + ']</div>' +
+        '<div><strong>Event</strong>: ' + bk.breakdown.eventRoll + '</div>' +
+        '<div><strong>Final Sprint</strong>: ' + Math.round(bk.breakdown.finalSprint) + '</div>' +
+        '<div style="margin-top:.25rem;"><strong>Total Score</strong>: ' + bk.totalScore.toFixed(1) + '</div>';
+      blocks.appendChild(div);
+    }
+
+    byId("results").style.display = "block";
   }
-  if(f.rank) rows=rows.filter(r=>clean(r.Rank).toUpperCase()===f.rank);
-  if(f.classification) rows=rows.filter(r=>splitMulti(r["Classification(s)"]).includes(f.classification));
-  if(f.element) rows=rows.filter(r=>splitMulti(r["Element(s)"]).includes(f.element));
-  if(f.type) rows=rows.filter(r=>clean(r.Type)===f.type);
-  if(f.style) rows=rows.filter(r=>hasVal(r["Fighting Style"], f.style));
-  if(f.hasStyle) rows=rows.filter(r=>clean(r["Fighting Style"]).length>0);
-  if(f.hasParent) rows=rows.filter(r=>clean(r["Parent Jutsu"]).length>0);
-  if(f.hasSeals) rows=rows.filter(r=>clean(r["Hand Seals"]).length>0);
-  if(f.hasTriggers) rows=rows.filter(r=>clean(r["Trigger(s)"]).length>0);
-  FILTERED=rows; PAGE=1; render();
-}
 
-function sortBy(key){ if(SORT.key===key){SORT.dir*=-1}else{SORT.key=key;SORT.dir=1} render(); }
-
-function pagedRows(){
-  const sorted=FILTERED.slice().sort((a,b)=>{
-    const av=clean(a[SORT.key]).toLowerCase(), bv=clean(b[SORT.key]).toLowerCase();
-    if(av<bv) return -1*SORT.dir; if(av>bv) return 1*SORT.dir; return 0;
+  // Show move/ability description
+  byId("specialMove").addEventListener("change", function(){
+    var moveKey = this.value || "";
+    byId("moveDesc").textContent = moveInfo[moveKey] ? moveInfo[moveKey].desc : "";
   });
-  const start=(PAGE-1)*PAGE_SIZE;
-  return { total:sorted.length, rows:sorted.slice(start,start+PAGE_SIZE) };
-}
 
-function render(){
-  const grid=document.getElementById('grid'); const tbody=grid.querySelector('tbody');
-  const {total,rows}=pagedRows();
-  tbody.innerHTML=rows.map(r=>{
-    const classifications=splitMulti(r["Classification(s)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ");
-    const elements=splitMulti(r["Element(s)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ");
-    const style=esc(r["Fighting Style"]), type=esc(r.Type), chakra=esc(r["Chakra Cost"])||"", range=esc(r["Range"])||"";
-    const handSeals=esc(r["Hand Seals"])||"", triggers=esc(r["Trigger(s)"])||"", parent=esc(r["Parent Jutsu"])||"";
-    const exp=esc(computeExp(r)), req=esc(r["Requirements"])||"", desc=esc(r["Description"])||"";
-    return `<tr>
-      <td class="name">${esc(r.Name)}<div class="muted mono">EXP ${exp}${type?` · ${type}`:``}</div></td>
-      <td>${esc(r.Rank)}</td>
-      <td>${classifications}</td>
-      <td>${splitMulti(r["Class(es)"]).map(x=>`<span class="pill">${esc(x)}</span>`).join(" ")}</td>
-      <td>${elements}</td>
-      <td>${style?`<span class="tag">${style}</span>`:""}</td>
-      <td>${type}</td>
-      <td>${chakra}</td>
-      <td>${range}</td>
-      <td><details><summary>More</summary>
-        ${parent?`<div><b>Parent:</b> ${parent}</div>`:""}
-        ${handSeals?`<div><b>Hand Seals:</b> ${handSeals}</div>`:""}
-        ${triggers?`<div><b>Triggers:</b> ${triggers}</div>`:""}
-        ${req?`<div style="margin-top:6px"><b>Requirements</b><br>${req}</div>`:""}
-        ${desc?`<div style="margin-top:6px"><b>Description</b><br>${desc}</div>`:""}
-        ${r["Notes/Status"]?`<div style="margin-top:6px"><b>Notes</b><br>${esc(r["Notes/Status"])}</div>`:""}
-      </details></td></tr>`;
-  }).join("");
+  (function init(){
+    renderRacers();
 
-  // pager
-  const pager=document.getElementById('pager'); const pages=Math.max(1, Math.ceil(total/PAGE_SIZE));
-  pager.innerHTML=''; if(pages>1){ pager.classList.remove('hidden');
-    const mk=(label,to,disabled=false,current=false)=>{ const b=document.createElement('button'); b.className='pagebtn'; b.textContent=label;
-      if(current) b.setAttribute('aria-current','page'); if(disabled) b.disabled=true; else b.onclick=()=>{PAGE=to; render(); window.scrollTo({top:0,behavior:'smooth'})}; return b; };
-    pager.append(mk('⟨⟨',1,PAGE===1)); pager.append(mk('⟨',Math.max(1,PAGE-1),PAGE===1));
-    for(let p=Math.max(1,PAGE-2); p<=Math.min(pages,PAGE+2); p++) pager.append(mk(String(p),p,false,p===PAGE));
-    pager.append(mk('⟩',Math.min(pages,PAGE+1),PAGE===pages)); pager.append(mk('⟩⟩',pages,PAGE===pages));
-  } else pager.classList.add('hidden');
+    byId("addRacerBtn").addEventListener("click", function(){
+      var name = byId("pokeName").value.trim();
+      var hp = parseInt(byId("hp").value, 10);
+      var atk = parseInt(byId("atk").value, 10);
+      var def = parseInt(byId("def").value, 10);
+      var spAtk = parseInt(byId("spAtk").value, 10);
+      var spDef = parseInt(byId("spDef").value, 10);
+      var speed = parseInt(byId("speed").value, 10);
+      var skill = parseInt(byId("riderSkill").value, 10);
+      var move = byId("specialMove").value || "";
 
-  document.getElementById('meta').textContent = `${total} result${total===1?'':'s'}`;
-}
+      if (!name || isNaN(hp) || isNaN(atk) || isNaN(def) || isNaN(spAtk) || isNaN(spDef) || isNaN(speed)) {
+        byId("errorMsg").textContent = "Please fill in all stat fields with valid numbers.";
+        return;
+      }
+      if (isNaN(skill) || skill < 0 || skill > 12) {
+        byId("errorMsg").textContent = "Rider Skill must be between 0 and 12.";
+        return;
+      }
+      racers.push({
+        name: name,
+        base: { hp: hp, atk: atk, def: def, spAtk: spAtk, spDef: spDef, speed: speed },
+        riderSkill: skill,
+        move: move
+      });
+      byId("pokeName").value = "";
+      byId("hp").value = "";
+      byId("atk").value = "";
+      byId("def").value = "";
+      byId("spAtk").value = "";
+      byId("spDef").value = "";
+      byId("speed").value = "";
+      byId("specialMove").value = "";
+      byId("moveDesc").textContent = "";
+      byId("errorMsg").textContent = "";
+      renderRacers();
+    });
 
-function esc(s){ return String(s||"").replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
-
-// Export CSV (filtered)
-function toCsv(rows){
-  const columns=["Name","Rank","Classification(s)","Class(es)","Element(s)","Fighting Style","Type","Chakra Cost","Range","Hand Seals","Trigger(s)","Parent Jutsu","Requirements","Description","EXP Cost (auto)","Notes/Status"];
-  const escCSV=v=>'"'+String(v??"").replace(/"/g,'""')+'"';
-  const lines=[columns.join(',')];
-  rows.forEach(r=>{ const rec=Object.assign({},r); rec["EXP Cost (auto)"]=computeExp(r); lines.push(columns.map(k=>escCSV(rec[k])).join(',')); });
-  return lines.join('\n');
-}
-function download(name,text){ const blob=new Blob([text],{type:'text/csv'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); a.remove(); }
-
-// UI
-function wire(){
-  document.querySelectorAll('.chip').forEach(ch=> ch.addEventListener('click', ()=>{ ch.classList.toggle('on'); applyFilters(); }));
-  document.getElementById('q').addEventListener('input', debounce(applyFilters,120));
-  document.getElementById('style').addEventListener('input', debounce(applyFilters,120));
-  ['rank','classification','element','type'].forEach(id=>document.getElementById(id).addEventListener('change', applyFilters));
-  document.getElementById('clear').addEventListener('click', ()=>{ document.querySelectorAll('input.inp').forEach(i=>i.value=''); ['rank','classification','element','type'].forEach(id=>document.getElementById(id).value=''); document.querySelectorAll('.chip.on').forEach(x=>x.classList.remove('on')); applyFilters(); });
-  document.getElementById('exportCsv').addEventListener('click', ()=> download('jutsu_filtered.csv', toCsv(FILTERED)));
-  document.getElementById('reload').addEventListener('click', init);
-  document.querySelectorAll('thead th[data-sort]').forEach(th=> th.addEventListener('click', ()=> sortBy(th.dataset.sort)));
-  window.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); const q=document.getElementById('q'); q.focus(); q.select(); }});
-}
-function debounce(fn,ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a),ms); } }
-
-async function init(){
-  const loading=document.getElementById('loading'), grid=document.getElementById('grid'), error=document.getElementById('error');
-  error.classList.add('hidden'); grid.classList.add('hidden'); loading.classList.remove('hidden'); loading.textContent='Loading from Google Sheets…';
-  try{
-    RAW = await fetchSheet(CONFIG.SHEET_ID, CONFIG.SHEET_NAME);
-    if(!RAW.length) throw new Error("No rows parsed. Check tab name & header columns.");
-    document.getElementById('classification').length = 1; // reset if reloading
-    document.getElementById('element').length = 1;
-    document.getElementById('type').length = 1;
-    buildFacetOptions(RAW); FILTERED = RAW.slice(); render();
-    grid.classList.remove('hidden'); loading.classList.add('hidden');
-  }catch(err){
-    console.error(err);
-    error.classList.remove('hidden');
-    error.innerHTML = `<b>Failed to load sheet</b><br>${esc(err.message)}<br><br>
-      Quick checks:<ul>
-        <li><b>SHEET_ID</b> must be the long ID from the edit URL (not the publish key).</li>
-        <li>Share → <i>Anyone with the link: Viewer</i> <u>or</u> File → <i>Publish to the web</i>.</li>
-        <li>Tab name must be <code>${esc(CONFIG.SHEET_NAME)}</code>.</li>
-        <li>Header row must match exactly:<br><code>${esc(COLS.join(' | '))}</code></li>
-      </ul>`;
-    loading.classList.add('hidden');
-  }
-}
-
-wire(); 
-  if(localStorage.getItem('wide') === '1') document.body.classList.add('wide');
-document.getElementById('wide').addEventListener('click', () => {
-  document.body.classList.toggle('wide');
-  localStorage.setItem('wide', document.body.classList.contains('wide') ? '1' : '0');
-});
-  init();
+    byId("runRaceBtn").addEventListener("click", runRace);
+  })();
 </script>
 </body>
 </html>
